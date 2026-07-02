@@ -780,6 +780,20 @@ applyTheme();
 load();
 build();
 refresh();
+
+/* fit-to-screen: shrink the whole bracket so it fits the window width at 100% zoom.
+   Below 60% it stops shrinking (stays readable) and horizontal scroll takes over. */
+const wrapEl = document.querySelector(".wrap");
+const bracketEl = document.getElementById("bracket");
+const NAT_W = bracketEl.offsetWidth;
+function fitBracket(){
+  const cs = getComputedStyle(wrapEl);
+  const avail = wrapEl.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const scale = Math.max(0.55, Math.min(1, avail / NAT_W));
+  bracketEl.style.zoom = scale >= 1 ? "" : scale;
+}
+window.addEventListener("resize", fitBracket);
+fitBracket();
 })();
 </script>
 </body>
