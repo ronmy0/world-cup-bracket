@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>World Cup Bracket</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏆</text></svg>">
+<script>
+/* apply theme before first paint to avoid a light flash */
+try{
+  var s = localStorage.getItem("worldCupTheme");
+  if (s==="dark" || (!s && matchMedia("(prefers-color-scheme: dark)").matches))
+    document.documentElement.dataset.theme = "dark";
+}catch(e){}
+</script>
+<style>
+  :root{
+    color-scheme:light;
+    --bg:#eef2f7;
+    --bg-glow:#e2ecf5;
+    --card:#ffffff;
+    --ink:#15263c;
+    --muted:#6b7a90;
+    --faded:#a3b0c2;
+    --line:#dbe3ee;
+    --line-soft:#edf1f7;
+    --cl:#c2cede;          /* connector lines */
+    --hover:#eef4fa;
+    --accent:#0e7a44;      /* pitch green */
+    --gold:#c99a2f;
+    --input-bg:#f8fafc;
+    --input-focus-bg:#ffffff;
+    --btn-hover-bg:#f4f7fb;
+    --btn-hover-line:#c4cfde;
+    --danger-bg:#fdf1f1;
+    --danger-line:#e5b4b4;
+    --danger-ink:#aa3333;
+    --flag-a:#e8edf4;
+    --flag-b:#f3f6fa;
+    --champ-bg1:#fffdf4;
+    --champ-bg2:#fdf7e2;
+    --champ-line:#ecd9a0;
+    --champ-ink:#a8862f;
+    --final-line:#e3cf8e;
+    --third-line:#ddd2c4;
+    --third-ink:#9c8468;
+    --foot-b:#54677f;
+    --toast-bg:#1d3251;
+    --toast-ink:#ffffff;
+    --mw:200px;            /* match column width */
+    --gap:30px;            /* horizontal gap between columns */
+    --bh:800px;            /* bracket body height */
+  }
+  html[data-theme="dark"]{
+    color-scheme:dark;
+    --bg:#101722;
+    --bg-glow:#182234;
+    --card:#1b2433;
+    --ink:#e7edf7;
+    --muted:#93a3ba;
+    --faded:#5f6f86;
+    --line:#2d3a4e;
+    --line-soft:#253143;
+    --cl:#39485f;
+    --hover:#26324a;
+    --input-bg:#151d2a;
+    --input-focus-bg:#111826;
+    --btn-hover-bg:#232f44;
+    --btn-hover-line:#3c4c66;
+    --danger-bg:#3a2733;
+    --danger-line:#6e4450;
+    --danger-ink:#e79a9a;
+    --flag-a:#2a3547;
+    --flag-b:#212b3b;
+    --champ-bg1:#282214;
+    --champ-bg2:#2e2717;
+    --champ-line:#5f4f24;
+    --champ-ink:#d9b45a;
+    --final-line:#5f4f24;
+    --third-line:#4a4033;
+    --third-ink:#b59a80;
+    --foot-b:#aebfd6;
+    --toast-bg:#e7edf7;
+    --toast-ink:#16233a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(1200px 500px at 50% -200px, var(--bg-glow) 0%, var(--bg) 60%);
+    color:var(--ink);
+    font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+    min-height:100vh;
+    transition:background-color .25s,color .25s;
+  }
+
+  /* ---------- header ---------- */
+  header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:20px 28px 6px;max-width:2000px;margin:0 auto;
+  }
+  .title{display:flex;align-items:center;gap:12px}
+  .title .ball{font-size:26px}
+  h1{font-size:21px;margin:0;letter-spacing:.2px}
+  h1 small{display:block;font-size:12px;font-weight:500;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
+  .actions{display:flex;gap:10px}
+  .btn{
+    border:1px solid var(--line);background:var(--card);color:var(--ink);
+    padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;
+    box-shadow:0 1px 2px rgba(21,38,60,.06);transition:background .15s,border-color .15s;
+  }
+  .btn:hover{background:var(--btn-hover-bg);border-color:var(--btn-hover-line)}
+  .btn.danger:hover{background:var(--danger-bg);border-color:var(--danger-line);color:var(--danger-ink)}
+  .btn.icon{padding:7px 10px;font-size:14px;line-height:1}
+
+  /* ---------- bracket layout ---------- */
+  .wrap{overflow-x:auto;padding:10px 28px 40px}
+  .bracket{
+    display:flex;gap:var(--gap);align-items:stretch;
+    width:max-content;margin:0 auto;
+  }
+  .col{width:var(--mw);flex:none}
+  .col.mid{width:250px}
+  .rlabel{
+    height:34px;display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:var(--muted);
+  }
+  .col-body{height:var(--bh);display:flex;flex-direction:column}
+  .pair{flex:1;display:flex;flex-direction:column;position:relative}
+  .slot{flex:1;display:flex;flex-direction:column;justify-content:center;position:relative;padding:8px 0}
+
+  /* ---------- connector lines ---------- */
+  .dir-r .pair>.slot:first-child::after{
+    content:'';position:absolute;top:50%;bottom:0;right:calc(var(--gap)/-2);
+    width:calc(var(--gap)/2);border-top:2px solid var(--cl);border-right:2px solid var(--cl);
+    border-top-right-radius:9px;
+  }
+  .dir-r .pair>.slot:last-child::after{
+    content:'';position:absolute;top:0;height:50%;right:calc(var(--gap)/-2);
+    width:calc(var(--gap)/2);border-bottom:2px solid var(--cl);border-right:2px solid var(--cl);
+    border-bottom-right-radius:9px;
+  }
+  .dir-r .pair::after{
+    content:'';position:absolute;top:calc(50% - 1px);right:calc(-1*var(--gap));
+    width:calc(var(--gap)/2);border-top:2px solid var(--cl);
+  }
+  .dir-r .slot.tail::after{
+    content:'';position:absolute;top:calc(50% - 1px);right:calc(-1*var(--gap));
+    width:var(--gap);border-top:2px solid var(--cl);
+  }
+  .dir-l .pair>.slot:first-child::after{
+    content:'';position:absolute;top:50%;bottom:0;left:calc(var(--gap)/-2);
+    width:calc(var(--gap)/2);border-top:2px solid var(--cl);border-left:2px solid var(--cl);
+    border-top-left-radius:9px;
+  }
+  .dir-l .pair>.slot:last-child::after{
+    content:'';position:absolute;top:0;height:50%;left:calc(var(--gap)/-2);
+    width:calc(var(--gap)/2);border-bottom:2px solid var(--cl);border-left:2px solid var(--cl);
+    border-bottom-left-radius:9px;
+  }
+  .dir-l .pair::after{
+    content:'';position:absolute;top:calc(50% - 1px);left:calc(-1*var(--gap));
+    width:calc(var(--gap)/2);border-top:2px solid var(--cl);
+  }
+  .dir-l .slot.tail::after{
+    content:'';position:absolute;top:calc(50% - 1px);left:calc(-1*var(--gap));
+    width:var(--gap);border-top:2px solid var(--cl);
+  }
+
+  /* ---------- match card ---------- */
+  .match{
+    background:var(--card);border:1px solid var(--line);border-radius:10px;
+    box-shadow:0 1px 3px rgba(21,38,60,.08);position:relative;z-index:2;
+    transition:box-shadow .15s,background-color .25s,border-color .25s;
+  }
+  .match:hover{box-shadow:0 3px 10px rgba(21,38,60,.13)}
+  .match:focus-within,.match:has(.menu.open){z-index:40}
+  .trow{display:flex;align-items:center;gap:7px;padding:7px 8px;position:relative}
+  .trow+.trow{border-top:1px solid var(--line-soft)}
+
+  .flag{
+    width:24px;height:17px;flex:none;border-radius:3px;overflow:hidden;
+    box-shadow:inset 0 0 0 1px rgba(21,38,60,.18);
+    background:repeating-linear-gradient(45deg,var(--flag-a),var(--flag-a) 4px,var(--flag-b) 4px,var(--flag-b) 8px);
+  }
+  .flag img{width:100%;height:100%;object-fit:cover;display:block}
+
+  .tsel{flex:1;min-width:0;position:relative}
+
+  /* score + penalty inputs */
+  .score,.pin{
+    width:26px;flex:none;text-align:center;font:inherit;font-size:12.5px;font-weight:700;
+    color:var(--ink);border:1px solid var(--line);border-radius:6px;background:var(--input-bg);
+    padding:3px 0;outline:none;
+  }
+  .score:focus,.pin:focus{border-color:var(--accent);background:var(--input-focus-bg)}
+  .pens{display:none;align-items:center;gap:1px;color:var(--muted);font-size:13px;flex:none}
+  .pens.on{display:inline-flex}
+  .pin{width:24px;font-weight:600;color:var(--muted)}
+
+  /* combobox (round of 32) */
+  .combo{display:flex;align-items:center}
+  .cbx{
+    width:100%;min-width:0;font:inherit;font-size:12.5px;color:var(--ink);
+    border:none;background:transparent;outline:none;padding:3px 16px 3px 2px;
+    border-bottom:1px dashed transparent;
+  }
+  .cbx::placeholder{color:var(--faded);font-weight:400}
+  .cbx:focus{border-bottom-color:var(--cl)}
+  .cbx.filled{font-weight:600}
+  .caret{
+    position:absolute;right:0;top:50%;transform:translateY(-50%);
+    border:none;background:none;color:var(--faded);cursor:pointer;font-size:9px;padding:4px 2px;
+  }
+  .caret:hover{color:var(--muted)}
+
+  /* picker (later rounds) */
+  .pick{
+    width:100%;display:flex;align-items:center;gap:6px;border:none;background:none;
+    font:inherit;font-size:12.5px;color:var(--ink);cursor:pointer;padding:3px 2px;text-align:left;
+  }
+  .pick .pname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+  .pick .pname.ph{color:var(--faded);font-weight:400}
+  .pick .pc{font-size:9px;color:var(--faded)}
+  .pick:hover .pc{color:var(--muted)}
+  .pick.locked{cursor:default}
+  .pick.locked .pc{visibility:hidden}
+
+  /* dropdown menu */
+  .menu{
+    display:none;position:absolute;left:-34px;right:-10px;top:calc(100% + 4px);z-index:60;
+    background:var(--card);border:1px solid var(--line);border-radius:9px;
+    box-shadow:0 8px 24px rgba(21,38,60,.18);max-height:242px;overflow-y:auto;padding:4px;
+  }
+  .menu.open{display:block}
+  .menu.up{top:auto;bottom:calc(100% + 4px)}
+  .mi{
+    display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;
+    font-size:12.5px;cursor:pointer;white-space:nowrap;
+  }
+  .mi:hover{background:var(--hover)}
+  .mi .flag{width:22px;height:15px}
+  .mi.dis{color:var(--faded);cursor:default}
+  .mi.dis:hover{background:none}
+  .mi.clear{color:var(--danger-ink);font-size:12px}
+
+  /* losing team — name grays out, flag untouched */
+  .trow.lost .cbx,.trow.lost .pick .pname{color:var(--faded);font-weight:500}
+
+  /* ---------- middle column ---------- */
+  .mid .col-body{align-items:stretch}
+  .zone{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .zone.champ{justify-content:flex-end;padding-bottom:26px}
+  .zone.third{justify-content:flex-start;padding-top:26px}
+
+  .champ-card{
+    text-align:center;padding:14px 22px;border-radius:12px;min-width:190px;
+    background:linear-gradient(180deg,var(--champ-bg1),var(--champ-bg2));
+    border:1px solid var(--champ-line);box-shadow:0 2px 8px rgba(160,130,40,.14);
+    transition:background-color .25s,border-color .25s;
+  }
+  .champ-card .cup{font-size:30px;line-height:1}
+  .champ-card .clabel{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--champ-ink);margin-top:4px}
+  .champ-card .cteam{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;font-weight:700;font-size:15px;min-height:22px}
+  .champ-card .cteam .flag{width:26px;height:18px}
+  .champ-card .cteam.tbd{color:var(--faded);font-weight:500;font-size:13px}
+
+  .mid .mlabel{
+    font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;
+    color:var(--muted);margin-bottom:8px;text-align:center;
+  }
+  .mid .match{width:100%}
+  .fbox{width:230px}
+  .fbox .match.final-card{border-color:var(--final-line);box-shadow:0 3px 12px rgba(170,140,50,.16)}
+  .fbox .match.final-card .trow{padding:9px 9px}
+  .tbox{width:210px}
+  .tbox .match{border-color:var(--third-line)}
+  .tbox .mlabel{color:var(--third-ink)}
+
+  footer{
+    text-align:center;color:var(--muted);font-size:12px;padding:0 20px 26px;line-height:1.7;
+  }
+  footer b{color:var(--foot-b)}
+
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(8px);
+    background:var(--toast-bg);color:var(--toast-ink);font-size:13px;padding:9px 18px;border-radius:8px;
+    opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:99;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title">
+    <span class="ball">⚽</span>
+    <h1>World Cup Bracket<small>Knockout Stage · 32 Teams</small></h1>
+  </div>
+  <div class="actions">
+    <button class="btn icon" id="themeBtn" title="Toggle dark mode">🌙</button>
+    <button class="btn" id="shareBtn" title="Copies a link that contains your whole bracket — open it on any device">Copy share link</button>
+    <button class="btn danger" id="resetBtn">Reset bracket</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="bracket" id="bracket"></div>
+</div>
+
+<footer>
+  Your picks are <b>saved automatically</b> in this browser — come back any time.
+  When a match is level, a <b>(&nbsp;)</b> box appears next to the score: enter the penalty shootout result there.
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------------- teams (display names from flag filenames) ---------------- */
+const NAMES = {
+  algeria:"Algeria", argentina:"Argentina", australia:"Australia", austria:"Austria",
+  belgium:"Belgium", bosnia:"Bosnia", brazil:"Brazil", canada:"Canada",
+  cape_verde:"Cape Verde", colombia:"Colombia", croatia:"Croatia", dr_congo:"DR Congo",
+  ecuador:"Ecuador", egypt:"Egypt", england:"England", france:"France",
+  germany:"Germany", ghana:"Ghana", ivory_coast:"Ivory Coast", japan:"Japan",
+  mexico:"Mexico", morocco:"Morocco", netherlands:"Netherlands", norway:"Norway",
+  paraguay:"Paraguay", portugal:"Portugal", senegal:"Senegal", south_africa:"South Africa",
+  spain:"Spain", sweden:"Sweden", switzerland:"Switzerland", united_states:"United States"
+};
+const TEAMS = Object.keys(NAMES).sort((a,b)=>NAMES[a].localeCompare(NAMES[b]));
+const flagSrc = id => "flags/" + id + ".svg";
+
+/* ---------------- bracket model ---------------- */
+const range = (a,b)=>Array.from({length:b-a},(_,i)=>a+i);
+const ALL_MIDS = [
+  ...range(0,16).map(i=>"r32-"+i),
+  ...range(0,8).map(i=>"r16-"+i),
+  ...range(0,4).map(i=>"qf-"+i),
+  "sf-0","sf-1","f-0","t3-0"
+];
+const PREV = {r16:"r32", qf:"r16", sf:"qf"};
+
+function feederIds(mid){
+  const [r,iS] = mid.split("-"); const i = +iS;
+  if (r==="f" || r==="t3") return ["sf-0","sf-1"];
+  if (PREV[r]) return [PREV[r]+"-"+(2*i), PREV[r]+"-"+(2*i+1)];
+  return null;
+}
+function nextOf(mid){
+  const [r,iS] = mid.split("-"); const i = +iS;
+  if (r==="r32") return {m:"r16-"+(i>>1), s:i&1};
+  if (r==="r16") return {m:"qf-"+(i>>1),  s:i&1};
+  if (r==="qf")  return {m:"sf-"+(i>>1),  s:i&1};
+  if (r==="sf")  return {m:"f-0", s:i};
+  return null;
+}
+
+/* ---------------- state ---------------- */
+const KEY = "worldCupBracket_v1";
+let state;
+
+function freshState(){
+  const m = {};
+  ALL_MIDS.forEach(id => m[id] = {t1:null,t2:null,s1:"",s2:"",p1:"",p2:""});
+  return {v:1, m};
+}
+function sanitizeState(raw){
+  const st = freshState();
+  if (raw && raw.m) for (const id of ALL_MIDS){
+    const src = raw.m[id]; if (!src) continue;
+    const d = st.m[id];
+    for (const k of ["t1","t2"]) if (src[k] && NAMES[src[k]]) d[k] = src[k];
+    for (const k of ["s1","s2","p1","p2"])
+      if (typeof src[k]==="string") d[k] = src[k].replace(/\D/g,"").slice(0,2);
+  }
+  return st;
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+function load(){
+  if (location.hash.length > 1){
+    try{
+      const json = decodeURIComponent(escape(atob(location.hash.slice(1))));
+      state = sanitizeState(JSON.parse(json));
+      history.replaceState(null,"",location.pathname + location.search);
+      save();
+      return;
+    }catch(e){}
+  }
+  try{ state = sanitizeState(JSON.parse(localStorage.getItem(KEY))); }
+  catch(e){ state = freshState(); }
+  if (!state) state = freshState();
+}
+
+const teamsOf = mid => [state.m[mid].t1, state.m[mid].t2];
+const getT = (mid,slot) => state.m[mid]["t"+(slot+1)];
+const setT = (mid,slot,v) => { state.m[mid]["t"+(slot+1)] = v; };
+const num = s => s==="" ? null : parseInt(s,10);
+
+function clearScores(mid){ const d=state.m[mid]; d.s1=d.s2=d.p1=d.p2=""; }
+
+/* winner by score (used for final & 3rd place, incl. penalties) */
+function winnerByScore(mid){
+  const d = state.m[mid];
+  if (!d.t1 || !d.t2) return null;
+  const a=num(d.s1), b=num(d.s2);
+  if (a===null || b===null) return null;
+  if (a>b) return d.t1;
+  if (b>a) return d.t2;
+  const pa=num(d.p1), pb=num(d.p2);
+  if (pa!==null && pb!==null && pa!==pb) return pa>pb ? d.t1 : d.t2;
+  return null;
+}
+
+/* clear downstream picks that no longer match their feeder match */
+function cascade(){
+  const order = [...range(0,8).map(i=>"r16-"+i), ...range(0,4).map(i=>"qf-"+i),
+                 "sf-0","sf-1","f-0","t3-0"];
+  for (const mid of order){
+    const fs = feederIds(mid);
+    for (const slot of [0,1]){
+      const v = getT(mid,slot);
+      if (v && !teamsOf(fs[slot]).includes(v)){ setT(mid,slot,null); clearScores(mid); }
+    }
+  }
+}
+
+/* 3rd place = losers of the semis: once a finalist is picked, the other semi
+   team is slotted into the 3rd-place match automatically */
+function syncThird(){
+  for (const k of [0,1]){
+    const fin = getT("f-0",k);
+    if (!fin) continue;
+    const other = teamsOf("sf-"+k).find(t => t && t!==fin) || null;
+    if (getT("t3-0",k) !== other){ setT("t3-0",k,other); clearScores("t3-0"); }
+  }
+}
+
+/* which slot (0/1) lost each match — drives the gray-out */
+function loserSlots(){
+  const lost = {};
+  for (const mid of ALL_MIDS){
+    if (mid==="f-0" || mid==="t3-0"){
+      const w = winnerByScore(mid);
+      if (w) lost[mid] = (w===state.m[mid].t1) ? 1 : 0;
+      continue;
+    }
+    const ts = teamsOf(mid);
+    const nx = nextOf(mid);
+    const sel = getT(nx.m, nx.s);
+    if (sel && ts.includes(sel)){
+      const li = (sel===ts[0]) ? 1 : 0;
+      if (ts[li]) lost[mid] = li;
+    }
+    if (mid==="sf-0" || mid==="sf-1"){          /* picked straight into 3rd place */
+      const k = +mid.split("-")[1];
+      const t3 = getT("t3-0",k);
+      if (t3 && ts.includes(t3)) lost[mid] = (t3===ts[0]) ? 0 : 1;
+    }
+  }
+  return lost;
+}
+
+/* ---------------- DOM build ---------------- */
+const $ = (tag,cls)=>{ const e=document.createElement(tag); if(cls) e.className=cls; return e; };
+const refs = {};          // refs[mid] = [{row,flag,input?,pname?,pick?,menu,score,pensWrap,pin}, ...]
+let openMenu = null;
+
+function closeMenu(){ if(openMenu){ openMenu.classList.remove("open"); openMenu=null; } }
+document.addEventListener("mousedown", e=>{ if(openMenu && !openMenu.parentElement.contains(e.target)) closeMenu(); });
+
+function show(menu){ closeMenu(); menu.classList.add("open"); openMenu=menu; }
+
+function flagBox(){ return $("span","flag"); }
+function setFlag(el, teamId){
+  if (teamId){
+    let img = el.firstChild;
+    if (!img){ img = document.createElement("img"); img.alt=""; el.appendChild(img); }
+    const src = flagSrc(teamId);
+    if (!img.src.endsWith(src)) img.src = src;
+  } else el.textContent = "";
+}
+function menuItem(teamId, onPick){
+  const mi = $("div","mi");
+  const f = flagBox(); setFlag(f, teamId);
+  mi.appendChild(f);
+  mi.appendChild(document.createTextNode(NAMES[teamId]));
+  mi.addEventListener("mousedown", e=>{ e.preventDefault(); onPick(teamId); closeMenu(); });
+  return mi;
+}
+
+/* teams still free for a round-of-32 slot (no duplicates across the bracket) */
+function availableTeams(mid, slot){
+  const used = new Set();
+  for (const id of range(0,16).map(i=>"r32-"+i))
+    for (const s of [0,1])
+      if (!(id===mid && s===slot) && getT(id,s)) used.add(getT(id,s));
+  return TEAMS.filter(t => !used.has(t));
+}
+
+function afterChange(){ cascade(); syncThird(); save(); refresh(); }
+
+/* --- round-of-32 combobox: type to filter, or ▾ for the full list --- */
+function buildCombo(mid, slot, ref){
+  const wrap = $("div","combo");
+  const input = $("input","cbx");
+  input.type="text"; input.placeholder="Select team…";
+  input.setAttribute("autocomplete","off"); input.spellcheck=false;
+  const caret = $("button","caret"); caret.type="button"; caret.textContent="▼";
+  const menu = $("div","menu");
+  if (ref.menuUp) menu.classList.add("up");
+  wrap.append(input, caret, menu);
+
+  function fill(filter){
+    menu.textContent = "";
+    const f = filter.trim().toLowerCase();
+    const list = availableTeams(mid,slot).filter(t => NAMES[t].toLowerCase().includes(f));
+    if (!list.length){
+      const d = $("div","mi dis"); d.textContent = "No match"; menu.appendChild(d);
+    }
+    for (const t of list) menu.appendChild(menuItem(t, id=>{ setT(mid,slot,id); afterChange(); }));
+    if (getT(mid,slot)){
+      const c = $("div","mi clear"); c.textContent = "✕  Clear selection";
+      c.addEventListener("mousedown", e=>{ e.preventDefault(); setT(mid,slot,null); afterChange(); closeMenu(); });
+      menu.appendChild(c);
+    }
+  }
+  input.addEventListener("focus", ()=>{ input.select(); fill(""); show(menu); });
+  input.addEventListener("input", ()=>{ fill(input.value); show(menu); });
+  input.addEventListener("keydown", e=>{
+    if (e.key==="Enter"){
+      const t = getT(mid,slot);
+      if (input.value.trim()===""){ if(t){ setT(mid,slot,null); afterChange(); } }
+      else{
+        const first = availableTeams(mid,slot).find(x => NAMES[x].toLowerCase().includes(input.value.trim().toLowerCase()));
+        if (first){ setT(mid,slot,first); afterChange(); }
+      }
+      closeMenu(); input.blur();
+    }
+    if (e.key==="Escape"){ closeMenu(); input.blur(); }
+  });
+  input.addEventListener("blur", ()=>{
+    setTimeout(()=>{ if(openMenu===menu) closeMenu(); }, 100);
+    const t = getT(mid,slot);
+    input.value = t ? NAMES[t] : "";
+    input.classList.toggle("filled", !!t);
+  });
+  caret.addEventListener("mousedown", e=>{
+    e.preventDefault();
+    if (openMenu===menu) closeMenu(); else { fill(""); show(menu); input.focus(); }
+  });
+  ref.input = input; ref.menu = menu;
+  return wrap;
+}
+
+/* --- later-round picker: dropdown limited to the two teams of the feeder match --- */
+function buildPicker(mid, slot, ref){
+  const btn = $("button","pick"); btn.type="button";
+  const pname = $("span","pname ph"); pname.textContent = "—";
+  const pc = $("span","pc"); pc.textContent = "▼";
+  const menu = $("div","menu");
+  if (ref.menuUp) menu.classList.add("up");
+  btn.append(pname, pc);
+
+  btn.addEventListener("mousedown", e=>{
+    e.preventDefault();
+    if (btn.classList.contains("locked")) return;
+    if (openMenu===menu){ closeMenu(); return; }
+    menu.textContent = "";
+    const feeder = feederIds(mid)[slot];
+    const opts = teamsOf(feeder).filter(Boolean);
+    if (!opts.length){
+      const d = $("div","mi dis");
+      d.textContent = "Decide the previous match first";
+      menu.appendChild(d);
+    }
+    for (const t of opts) menu.appendChild(menuItem(t, id=>{ setT(mid,slot,id); afterChange(); }));
+    if (getT(mid,slot)){
+      const c = $("div","mi clear"); c.textContent = "✕  Clear";
+      c.addEventListener("mousedown", ev=>{ ev.preventDefault(); setT(mid,slot,null); afterChange(); closeMenu(); });
+      menu.appendChild(c);
+    }
+    show(menu);
+  });
+  ref.pname = pname; ref.pick = btn; ref.menu = menu;
+  const holder = $("div"); holder.append(btn, menu);
+  return holder;
+}
+
+function scoreInput(mid, key, cls){
+  const inp = $("input",cls);
+  inp.type="text"; inp.inputMode="numeric"; inp.maxLength=2;
+  inp.setAttribute("autocomplete","off");
+  inp.addEventListener("input", ()=>{
+    const v = inp.value.replace(/\D/g,"").slice(0,2);
+    if (inp.value!==v) inp.value=v;
+    state.m[mid][key]=v; save(); refresh();
+  });
+  return inp;
+}
+
+function buildMatch(mid, roundId, menuUp){
+  const card = $("div","match" + (mid==="f-0" ? " final-card" : ""));
+  refs[mid] = [];
+  for (const slot of [0,1]){
+    const row = $("div","trow");
+    const ref = {row, menuUp};
+    const flag = flagBox(); ref.flag = flag;
+    const tsel = $("div","tsel");
+    tsel.appendChild(roundId==="r32" ? buildCombo(mid,slot,ref) : buildPicker(mid,slot,ref));
+    const score = scoreInput(mid, slot?"s2":"s1", "score");
+    const pensWrap = $("span","pens");
+    const pin = scoreInput(mid, slot?"p2":"p1", "pin");
+    pin.title = "Penalty shootout";
+    pensWrap.append(document.createTextNode("("), pin, document.createTextNode(")"));
+    ref.score = score; ref.pensWrap = pensWrap; ref.pin = pin;
+    row.append(flag, tsel, score, pensWrap);
+    card.appendChild(row);
+    refs[mid].push(ref);
+  }
+  return card;
+}
+
+const COLS = [
+  {label:"Round of 32",    round:"r32", ms:range(0,8),   dir:"r"},
+  {label:"Round of 16",    round:"r16", ms:range(0,4),   dir:"r"},
+  {label:"Quarter-finals", round:"qf",  ms:[0,1],        dir:"r"},
+  {label:"Semi-finals",    round:"sf",  ms:[0],          dir:"r", tail:true},
+  {mid:true},
+  {label:"Semi-finals",    round:"sf",  ms:[1],          dir:"l", tail:true},
+  {label:"Quarter-finals", round:"qf",  ms:[2,3],        dir:"l"},
+  {label:"Round of 16",    round:"r16", ms:range(4,8),   dir:"l"},
+  {label:"Round of 32",    round:"r32", ms:range(8,16),  dir:"l"},
+];
+
+let champRefs = {};
+
+function buildMiddle(){
+  const col = $("div","col mid");
+  col.appendChild($("div","rlabel"));
+  const body = $("div","col-body");
+
+  const zc = $("div","zone champ");
+  const cc = $("div","champ-card");
+  const cup = $("div","cup"); cup.textContent="🏆";
+  const cl = $("div","clabel"); cl.textContent="World Champions";
+  const ct = $("div","cteam tbd");
+  cc.append(cup,cl,ct); zc.appendChild(cc);
+  champRefs = {box:cc, team:ct};
+
+  const zf = $("div","zone");
+  const fb = $("div","fbox");
+  const fl = $("div","mlabel"); fl.textContent="Final";
+  fb.append(fl, buildMatch("f-0","f",false));
+  zf.appendChild(fb);
+
+  const zt = $("div","zone third");
+  const tb = $("div","tbox");
+  const tl = $("div","mlabel"); tl.textContent="Third place";
+  tb.append(tl, buildMatch("t3-0","t3",false));
+  zt.appendChild(tb);
+
+  body.append(zc, zf, zt);
+  col.appendChild(body);
+  return col;
+}
+
+function build(){
+  const root = document.getElementById("bracket");
+  for (const c of COLS){
+    if (c.mid){ root.appendChild(buildMiddle()); continue; }
+    const col = $("div","col dir-"+c.dir);
+    const lab = $("div","rlabel"); lab.textContent = c.label;
+    col.appendChild(lab);
+    const body = $("div","col-body");
+    if (c.tail){
+      const slot = $("div","slot tail");
+      slot.appendChild(buildMatch(c.round+"-"+c.ms[0], c.round, false));
+      body.appendChild(slot);
+    } else {
+      for (let i=0; i<c.ms.length; i+=2){
+        const pair = $("div","pair");
+        for (const j of [i,i+1]){
+          const slot = $("div","slot");
+          const up = j >= c.ms.length/2 && c.ms.length > 2;   // lower half → menu opens upward
+          slot.appendChild(buildMatch(c.round+"-"+c.ms[j], c.round, up));
+          pair.appendChild(slot);
+        }
+        body.appendChild(pair);
+      }
+    }
+    col.appendChild(body);
+    root.appendChild(col);
+  }
+}
+
+/* ---------------- refresh UI from state ---------------- */
+function refresh(){
+  const lost = loserSlots();
+  for (const mid of ALL_MIDS){
+    const d = state.m[mid];
+    const tie = d.s1!=="" && d.s2!=="" && num(d.s1)===num(d.s2);
+    for (const slot of [0,1]){
+      const ref = refs[mid][slot];
+      const t = getT(mid,slot);
+      setFlag(ref.flag, t);
+      if (ref.input){
+        if (document.activeElement !== ref.input){
+          ref.input.value = t ? NAMES[t] : "";
+          ref.input.classList.toggle("filled", !!t);
+        }
+      } else {
+        ref.pname.textContent = t ? NAMES[t] : "—";
+        ref.pname.classList.toggle("ph", !t);
+        if (mid==="t3-0") ref.pick.classList.toggle("locked", !!getT("f-0",slot));
+      }
+      const sv = slot ? d.s2 : d.s1, pv = slot ? d.p2 : d.p1;
+      if (document.activeElement !== ref.score) ref.score.value = sv;
+      if (document.activeElement !== ref.pin) ref.pin.value = pv;
+      ref.pensWrap.classList.toggle("on", tie);
+      ref.row.classList.toggle("lost", lost[mid]===slot);
+    }
+  }
+  const w = winnerByScore("f-0");
+  champRefs.team.textContent = "";
+  if (w){
+    const f = flagBox(); setFlag(f,w);
+    champRefs.team.append(f, document.createTextNode(NAMES[w]));
+    champRefs.team.classList.remove("tbd");
+  } else {
+    champRefs.team.textContent = "To be decided";
+    champRefs.team.classList.add("tbd");
+  }
+}
+
+/* ---------------- header buttons ---------------- */
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast._h); toast._h = setTimeout(()=>t.classList.remove("show"), 2200);
+}
+document.getElementById("shareBtn").addEventListener("click", ()=>{
+  const data = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
+  const url = location.origin.startsWith("http")
+    ? location.origin + location.pathname + "#" + data
+    : location.href.split("#")[0] + "#" + data;
+  (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
+    .then(()=>toast("Link copied — your bracket travels with it 🧳"))
+    .catch(()=>{ window.prompt("Copy this link:", url); });
+});
+document.getElementById("resetBtn").addEventListener("click", ()=>{
+  if (!confirm("Clear the whole bracket? This can't be undone.")) return;
+  state = freshState(); save(); refresh();
+});
+
+/* dark mode: follows the browser/OS setting until the toggle is used,
+   then the manual choice is remembered */
+const THEME_KEY = "worldCupTheme";
+const themeBtn = document.getElementById("themeBtn");
+const darkMq = window.matchMedia("(prefers-color-scheme: dark)");
+function savedTheme(){ try{ return localStorage.getItem(THEME_KEY); }catch(e){ return null; } }
+function applyTheme(){
+  const s = savedTheme();
+  const dark = s ? s==="dark" : darkMq.matches;
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  themeBtn.textContent = dark ? "☀️" : "🌙";
+  themeBtn.title = dark ? "Switch to light mode" : "Switch to dark mode";
+}
+themeBtn.addEventListener("click", ()=>{
+  const dark = document.documentElement.dataset.theme==="dark";
+  try{ localStorage.setItem(THEME_KEY, dark ? "light" : "dark"); }catch(e){}
+  applyTheme();
+});
+if (darkMq.addEventListener) darkMq.addEventListener("change", applyTheme);
+applyTheme();
+
+/* ---------------- go ---------------- */
+load();
+build();
+refresh();
+})();
+</script>
+</body>
+</html>
