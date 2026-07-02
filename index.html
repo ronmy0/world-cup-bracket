@@ -112,6 +112,17 @@ try{
   .btn:hover{background:var(--btn-hover-bg);border-color:var(--btn-hover-line)}
   .btn.danger:hover{background:var(--danger-bg);border-color:var(--danger-line);color:var(--danger-ink)}
   .btn.icon{padding:7px 10px;font-size:14px;line-height:1}
+  .settings{position:relative}
+  .panel{
+    display:none;position:absolute;right:0;top:calc(100% + 8px);width:272px;z-index:120;
+    background:var(--card);border:1px solid var(--line);border-radius:10px;
+    box-shadow:0 8px 24px rgba(21,38,60,.18);padding:14px 16px;text-align:left;
+  }
+  .panel.open{display:block}
+  .prow{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600}
+  .prow input[type=range]{flex:1;accent-color:var(--accent);min-width:0}
+  .prow b{min-width:40px;text-align:right;font-size:12.5px;color:var(--muted)}
+  .phint{font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.5}
 
   /* ---------- bracket layout ---------- */
   .wrap{overflow-x:auto;padding:10px 28px 40px}
@@ -299,6 +310,17 @@ try{
   </div>
   <div class="actions">
     <button class="btn icon" id="themeBtn" title="Toggle dark mode">🌙</button>
+    <div class="settings">
+      <button class="btn icon" id="setBtn" title="Settings">⚙️</button>
+      <div class="panel" id="setPanel">
+        <div class="prow">
+          <span>Text size</span>
+          <input type="range" id="sizeRange" min="100" max="200" step="5" value="100">
+          <b id="sizeVal">100%</b>
+        </div>
+        <div class="phint">At 100% the whole bracket fits on your screen. Larger sizes zoom the bracket in — scroll sideways to see it all.</div>
+      </div>
+    </div>
     <button class="btn" id="shareBtn" title="Copies a link that contains your whole bracket — open it on any device">Copy share link</button>
     <button class="btn danger" id="resetBtn">Reset bracket</button>
   </div>
@@ -781,19 +803,47 @@ load();
 build();
 refresh();
 
-/* fit-to-screen: shrink the whole bracket so it fits the window width at 100% zoom.
-   Below 60% it stops shrinking (stays readable) and horizontal scroll takes over. */
+/* fit-to-screen: shrink the whole bracket so it fits the window width at 100% zoom
+   (with a floor so it never becomes unreadably small), then apply the user's
+   text-size preference on top — above 100% the horizontal scroll takes over. */
+const SIZE_KEY = "worldCupTextSize";
+let sizeFactor = 100;
+try{
+  const v = parseInt(localStorage.getItem(SIZE_KEY), 10);
+  if (v >= 100 && v <= 200) sizeFactor = v;
+}catch(e){}
+
 const wrapEl = document.querySelector(".wrap");
 const bracketEl = document.getElementById("bracket");
 const NAT_W = bracketEl.offsetWidth;
 function fitBracket(){
   const cs = getComputedStyle(wrapEl);
   const avail = wrapEl.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-  const scale = Math.max(0.55, Math.min(1, avail / NAT_W));
-  bracketEl.style.zoom = scale >= 1 ? "" : scale;
+  const base = Math.max(0.55, Math.min(1, avail / NAT_W));
+  const scale = base * (sizeFactor / 100);
+  bracketEl.style.zoom = Math.abs(scale - 1) < 0.001 ? "" : scale;
 }
 window.addEventListener("resize", fitBracket);
 fitBracket();
+
+/* settings panel */
+const setBtn = document.getElementById("setBtn");
+const setPanel = document.getElementById("setPanel");
+const sizeRange = document.getElementById("sizeRange");
+const sizeVal = document.getElementById("sizeVal");
+sizeRange.value = sizeFactor;
+sizeVal.textContent = sizeFactor + "%";
+sizeRange.addEventListener("input", ()=>{
+  sizeFactor = +sizeRange.value;
+  sizeVal.textContent = sizeFactor + "%";
+  try{ localStorage.setItem(SIZE_KEY, String(sizeFactor)); }catch(e){}
+  fitBracket();
+});
+setBtn.addEventListener("click", ()=> setPanel.classList.toggle("open"));
+document.addEventListener("mousedown", e=>{
+  if (setPanel.classList.contains("open") && !e.target.closest(".settings"))
+    setPanel.classList.remove("open");
+});
 })();
 </script>
 </body>
