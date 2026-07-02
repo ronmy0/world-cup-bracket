@@ -187,7 +187,7 @@ try{
   }
   .match:hover{box-shadow:0 3px 10px rgba(21,38,60,.13)}
   .match:focus-within,.match:has(.menu.open){z-index:40}
-  .trow{display:flex;align-items:center;gap:7px;padding:7px 8px;position:relative}
+  .trow{display:flex;align-items:center;gap:5px;padding:7px 7px;position:relative}
   .trow+.trow{border-top:1px solid var(--line-soft)}
 
   .flag{
@@ -199,32 +199,31 @@ try{
 
   .tsel{flex:1;min-width:0;position:relative}
 
-  /* score + penalty inputs */
+  /* score + penalty inputs — borderless, sized to their digits */
   .score,.pin{
-    width:26px;flex:none;text-align:center;font:inherit;font-size:calc(12.5px * var(--ts));font-weight:700;
-    color:var(--ink);border:1px solid var(--line);border-radius:6px;background:var(--input-bg);
-    padding:3px 0;outline:none;
+    width:calc(1.4ch + 4px);flex:none;text-align:center;font:inherit;
+    font-size:calc(12.5px * var(--ts));font-weight:700;color:var(--ink);
+    border:none;border-bottom:1px solid transparent;background:transparent;
+    padding:2px;outline:none;
   }
-  .score:focus,.pin:focus{border-color:var(--accent);background:var(--input-focus-bg)}
-  .pens{display:none;align-items:center;gap:1px;color:var(--muted);font-size:calc(13px * var(--ts));flex:none}
+  .score.w2,.pin.w2{width:calc(2.3ch + 4px)}
+  .score::placeholder,.pin::placeholder{color:var(--faded);font-weight:400}
+  .score:hover,.pin:hover{border-bottom-color:var(--cl)}
+  .score:focus,.pin:focus{border-bottom-color:var(--accent)}
+  .pens{display:none;align-items:center;color:var(--muted);font-size:calc(13px * var(--ts));flex:none}
   .pens.on{display:inline-flex}
-  .pin{width:24px;font-weight:600;color:var(--muted)}
+  .pin{font-weight:600;color:var(--muted)}
 
   /* combobox (round of 32) */
   .combo{display:flex;align-items:center}
   .cbx{
     width:100%;min-width:0;font:inherit;font-size:calc(12.5px * var(--ts));color:var(--ink);
-    border:none;background:transparent;outline:none;padding:3px 16px 3px 2px;
+    border:none;background:transparent;outline:none;padding:3px 2px;
     border-bottom:1px dashed transparent;
   }
   .cbx::placeholder{color:var(--faded);font-weight:400}
   .cbx:focus{border-bottom-color:var(--cl)}
   .cbx.filled{font-weight:600}
-  .caret{
-    position:absolute;right:0;top:50%;transform:translateY(-50%);
-    border:none;background:none;color:var(--faded);cursor:pointer;font-size:9px;padding:4px 2px;
-  }
-  .caret:hover{color:var(--muted)}
 
   /* picker (later rounds) */
   .pick{
@@ -233,10 +232,8 @@ try{
   }
   .pick .pname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
   .pick .pname.ph{color:var(--faded);font-weight:400}
-  .pick .pc{font-size:9px;color:var(--faded)}
-  .pick:hover .pc{color:var(--muted)}
+  .pick:not(.locked):hover .pname{color:var(--accent)}
   .pick.locked{cursor:default}
-  .pick.locked .pc{visibility:hidden}
 
   /* dropdown menu */
   .menu{
@@ -333,7 +330,7 @@ try{
 
 <footer>
   Your picks are <b>saved automatically</b> in this browser — come back any time.
-  When a match is level, a <b>(&nbsp;)</b> box appears next to the score: enter the penalty shootout result there.
+  When a match is level, a <b>(&nbsp;)</b> appears next to the score: enter the penalty shootout result there.
 </footer>
 
 <div class="toast" id="toast"></div>
@@ -531,10 +528,9 @@ function buildCombo(mid, slot, ref){
   const input = $("input","cbx");
   input.type="text"; input.placeholder="Select team…";
   input.setAttribute("autocomplete","off"); input.spellcheck=false;
-  const caret = $("button","caret"); caret.type="button"; caret.textContent="▼";
   const menu = $("div","menu");
   if (ref.menuUp) menu.classList.add("up");
-  wrap.append(input, caret, menu);
+  wrap.append(input, menu);
 
   function fill(filter){
     menu.textContent = "";
@@ -551,6 +547,7 @@ function buildCombo(mid, slot, ref){
     }
   }
   input.addEventListener("focus", ()=>{ input.select(); fill(""); show(menu); });
+  input.addEventListener("click", ()=>{ if (openMenu!==menu){ fill(""); show(menu); } });
   input.addEventListener("input", ()=>{ fill(input.value); show(menu); });
   input.addEventListener("keydown", e=>{
     if (e.key==="Enter"){
@@ -569,10 +566,7 @@ function buildCombo(mid, slot, ref){
     const t = getT(mid,slot);
     input.value = t ? NAMES[t] : "";
     input.classList.toggle("filled", !!t);
-  });
-  caret.addEventListener("mousedown", e=>{
-    e.preventDefault();
-    if (openMenu===menu) closeMenu(); else { fill(""); show(menu); input.focus(); }
+    fitAllNames();
   });
   ref.input = input; ref.menu = menu;
   return wrap;
@@ -582,10 +576,9 @@ function buildCombo(mid, slot, ref){
 function buildPicker(mid, slot, ref){
   const btn = $("button","pick"); btn.type="button";
   const pname = $("span","pname ph"); pname.textContent = "—";
-  const pc = $("span","pc"); pc.textContent = "▼";
   const menu = $("div","menu");
   if (ref.menuUp) menu.classList.add("up");
-  btn.append(pname, pc);
+  btn.append(pname);
 
   btn.addEventListener("mousedown", e=>{
     e.preventDefault();
@@ -615,10 +608,12 @@ function buildPicker(mid, slot, ref){
 function scoreInput(mid, key, cls){
   const inp = $("input",cls);
   inp.type="text"; inp.inputMode="numeric"; inp.maxLength=2;
+  inp.placeholder="–";
   inp.setAttribute("autocomplete","off");
   inp.addEventListener("input", ()=>{
     const v = inp.value.replace(/\D/g,"").slice(0,2);
     if (inp.value!==v) inp.value=v;
+    inp.classList.toggle("w2", v.length>1);
     state.m[mid][key]=v; save(); refresh();
   });
   return inp;
@@ -742,6 +737,8 @@ function refresh(){
       const sv = slot ? d.s2 : d.s1, pv = slot ? d.p2 : d.p1;
       if (document.activeElement !== ref.score) ref.score.value = sv;
       if (document.activeElement !== ref.pin) ref.pin.value = pv;
+      ref.score.classList.toggle("w2", sv.length>1);
+      ref.pin.classList.toggle("w2", pv.length>1);
       ref.pensWrap.classList.toggle("on", tie);
       ref.row.classList.toggle("lost", lost[mid]===slot);
     }
