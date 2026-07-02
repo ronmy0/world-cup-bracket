@@ -49,7 +49,8 @@ try{
     --toast-ink:#ffffff;
     --mw:200px;            /* match column width */
     --gap:30px;            /* horizontal gap between columns */
-    --bh:800px;            /* bracket body height */
+    --ts:1;                /* text-size factor (settings slider) */
+    --bh:calc(800px + (var(--ts) - 1) * 360px);  /* bracket body height — grows with text */
   }
   html[data-theme="dark"]{
     color-scheme:dark;
@@ -134,7 +135,7 @@ try{
   .col.mid{width:250px}
   .rlabel{
     height:34px;display:flex;align-items:center;justify-content:center;
-    font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:var(--muted);
+    font-size:calc(11px * var(--ts));font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:var(--muted);
   }
   .col-body{height:var(--bh);display:flex;flex-direction:column}
   .pair{flex:1;display:flex;flex-direction:column;position:relative}
@@ -200,19 +201,19 @@ try{
 
   /* score + penalty inputs */
   .score,.pin{
-    width:26px;flex:none;text-align:center;font:inherit;font-size:12.5px;font-weight:700;
+    width:26px;flex:none;text-align:center;font:inherit;font-size:calc(12.5px * var(--ts));font-weight:700;
     color:var(--ink);border:1px solid var(--line);border-radius:6px;background:var(--input-bg);
     padding:3px 0;outline:none;
   }
   .score:focus,.pin:focus{border-color:var(--accent);background:var(--input-focus-bg)}
-  .pens{display:none;align-items:center;gap:1px;color:var(--muted);font-size:13px;flex:none}
+  .pens{display:none;align-items:center;gap:1px;color:var(--muted);font-size:calc(13px * var(--ts));flex:none}
   .pens.on{display:inline-flex}
   .pin{width:24px;font-weight:600;color:var(--muted)}
 
   /* combobox (round of 32) */
   .combo{display:flex;align-items:center}
   .cbx{
-    width:100%;min-width:0;font:inherit;font-size:12.5px;color:var(--ink);
+    width:100%;min-width:0;font:inherit;font-size:calc(12.5px * var(--ts));color:var(--ink);
     border:none;background:transparent;outline:none;padding:3px 16px 3px 2px;
     border-bottom:1px dashed transparent;
   }
@@ -228,7 +229,7 @@ try{
   /* picker (later rounds) */
   .pick{
     width:100%;display:flex;align-items:center;gap:6px;border:none;background:none;
-    font:inherit;font-size:12.5px;color:var(--ink);cursor:pointer;padding:3px 2px;text-align:left;
+    font:inherit;font-size:calc(12.5px * var(--ts));color:var(--ink);cursor:pointer;padding:3px 2px;text-align:left;
   }
   .pick .pname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
   .pick .pname.ph{color:var(--faded);font-weight:400}
@@ -247,13 +248,13 @@ try{
   .menu.up{top:auto;bottom:calc(100% + 4px)}
   .mi{
     display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;
-    font-size:12.5px;cursor:pointer;white-space:nowrap;
+    font-size:calc(12.5px * var(--ts));cursor:pointer;white-space:nowrap;
   }
   .mi:hover{background:var(--hover)}
   .mi .flag{width:22px;height:15px}
   .mi.dis{color:var(--faded);cursor:default}
   .mi.dis:hover{background:none}
-  .mi.clear{color:var(--danger-ink);font-size:12px}
+  .mi.clear{color:var(--danger-ink);font-size:calc(12px * var(--ts))}
 
   /* losing team — name grays out, flag untouched */
   .trow.lost .cbx,.trow.lost .pick .pname{color:var(--faded);font-weight:500}
@@ -271,13 +272,13 @@ try{
     transition:background-color .25s,border-color .25s;
   }
   .champ-card .cup{font-size:30px;line-height:1}
-  .champ-card .clabel{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--champ-ink);margin-top:4px}
-  .champ-card .cteam{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;font-weight:700;font-size:15px;min-height:22px}
+  .champ-card .clabel{font-size:calc(10px * var(--ts));font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--champ-ink);margin-top:4px}
+  .champ-card .cteam{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;font-weight:700;font-size:calc(15px * var(--ts));min-height:22px}
   .champ-card .cteam .flag{width:26px;height:18px}
-  .champ-card .cteam.tbd{color:var(--faded);font-weight:500;font-size:13px}
+  .champ-card .cteam.tbd{color:var(--faded);font-weight:500;font-size:calc(13px * var(--ts))}
 
   .mid .mlabel{
-    font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;
+    font-size:calc(11px * var(--ts));font-weight:700;letter-spacing:1.6px;text-transform:uppercase;
     color:var(--muted);margin-bottom:8px;text-align:center;
   }
   .mid .match{width:100%}
@@ -315,10 +316,10 @@ try{
       <div class="panel" id="setPanel">
         <div class="prow">
           <span>Text size</span>
-          <input type="range" id="sizeRange" min="100" max="200" step="5" value="100">
+          <input type="range" id="sizeRange" min="100" max="150" step="5" value="100">
           <b id="sizeVal">100%</b>
         </div>
-        <div class="phint">At 100% the whole bracket fits on your screen. Larger sizes zoom the bracket in — scroll sideways to see it all.</div>
+        <div class="phint">Only the lettering grows — the bracket still fits your screen. The longest team names shrink slightly if they run out of room.</div>
       </div>
     </div>
     <button class="btn" id="shareBtn" title="Copies a link that contains your whole bracket — open it on any device">Copy share link</button>
@@ -755,6 +756,23 @@ function refresh(){
     champRefs.team.textContent = "To be decided";
     champRefs.team.classList.add("tbd");
   }
+  fitAllNames();
+}
+
+/* long names that overflow their slot get their font nudged down until they fit */
+function fitAllNames(){
+  for (const mid of ALL_MIDS) for (const ref of refs[mid]){
+    const el = ref.input || ref.pname;
+    if (document.activeElement === el) continue;
+    el.style.fontSize = "";
+    if (el.scrollWidth <= el.clientWidth + 1) continue;
+    const base = parseFloat(getComputedStyle(el).fontSize);
+    let f = base;
+    while (el.scrollWidth > el.clientWidth + 1 && f > base * 0.75){
+      f -= 0.5;
+      el.style.fontSize = f + "px";
+    }
+  }
 }
 
 /* ---------------- header buttons ---------------- */
@@ -803,41 +821,43 @@ load();
 build();
 refresh();
 
-/* fit-to-screen: shrink the whole bracket so it fits the window width at 100% zoom
-   (with a floor so it never becomes unreadably small), then apply the user's
-   text-size preference on top — above 100% the horizontal scroll takes over. */
-const SIZE_KEY = "worldCupTextSize";
-let sizeFactor = 100;
-try{
-  const v = parseInt(localStorage.getItem(SIZE_KEY), 10);
-  if (v >= 100 && v <= 200) sizeFactor = v;
-}catch(e){}
-
+/* fit-to-screen: shrink the whole bracket so it fits the window width at 100% zoom.
+   Below 55% it stops shrinking (stays readable) and horizontal scroll takes over. */
 const wrapEl = document.querySelector(".wrap");
 const bracketEl = document.getElementById("bracket");
 const NAT_W = bracketEl.offsetWidth;
 function fitBracket(){
   const cs = getComputedStyle(wrapEl);
   const avail = wrapEl.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-  const base = Math.max(0.55, Math.min(1, avail / NAT_W));
-  const scale = base * (sizeFactor / 100);
-  bracketEl.style.zoom = Math.abs(scale - 1) < 0.001 ? "" : scale;
+  const scale = Math.max(0.55, Math.min(1, avail / NAT_W));
+  bracketEl.style.zoom = scale >= 1 ? "" : scale;
 }
 window.addEventListener("resize", fitBracket);
 fitBracket();
 
-/* settings panel */
+/* settings panel — text-size slider scales only the lettering (via --ts);
+   card widths, flags and the fitted bracket width stay untouched */
+const SIZE_KEY = "worldCupTextSize";
+let sizeFactor = 100;
+try{
+  const v = parseInt(localStorage.getItem(SIZE_KEY), 10);
+  if (v >= 100 && v <= 150) sizeFactor = v;
+}catch(e){}
 const setBtn = document.getElementById("setBtn");
 const setPanel = document.getElementById("setPanel");
 const sizeRange = document.getElementById("sizeRange");
 const sizeVal = document.getElementById("sizeVal");
+function applyTextSize(){
+  document.documentElement.style.setProperty("--ts", sizeFactor / 100);
+  sizeVal.textContent = sizeFactor + "%";
+  fitAllNames();
+}
 sizeRange.value = sizeFactor;
-sizeVal.textContent = sizeFactor + "%";
+applyTextSize();
 sizeRange.addEventListener("input", ()=>{
   sizeFactor = +sizeRange.value;
-  sizeVal.textContent = sizeFactor + "%";
   try{ localStorage.setItem(SIZE_KEY, String(sizeFactor)); }catch(e){}
-  fitBracket();
+  applyTextSize();
 });
 setBtn.addEventListener("click", ()=> setPanel.classList.toggle("open"));
 document.addEventListener("mousedown", e=>{
